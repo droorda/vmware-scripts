@@ -268,8 +268,8 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     # regardless if its within same SSO Domain or not
     $service = New-Object VMware.Vim.ServiceLocator
     $credential = New-Object VMware.Vim.ServiceLocatorNamePassword
-    $credential.username = $destVCusername
-    $credential.password = $destVCpassword
+    $credential.username = $destvcCredential.UserName
+    $credential.password = $destvcCredential.GetNetworkCredential().password
     $service.credential = $credential
     # For some xVC-vMotion, VC's InstanceUUID must be in all caps
     # Haven't figured out why, but this flag would allow user to toggle (default=false)
