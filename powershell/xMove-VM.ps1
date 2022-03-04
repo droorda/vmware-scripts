@@ -154,7 +154,6 @@ add-type @"
     $destVCThumbprint = ($endpoint_request.ServicePoint.Certificate.GetCertHashString()) -replace '(..(?!$))','$1:'
 
     # Source VM to migrate
-    $vm_view = Get-View (Get-VM -Server $sourcevc -Name $vm) -Property Config.Hardware.Device
 
     # Dest Datastore to migrate VM to
     $datastore_view = (Get-Datastore -Server $destVCConn -Name $datastore)
@@ -169,7 +168,11 @@ add-type @"
     }
 
     # Dest ESXi host to migrate VM to
-    $vmhost_view = (Get-VMHost -Server $destVCConn -Name $vmhost)
+    if ($vmhost) {
+        $vmhost_view = (Get-VMHost -Server $destvc -Name $vmhost)
+    } else {
+        $vmhost_view = $cluster_view | Get-VMHost | Get-Random
+    }
 <#
 #---------------CheckRelocate_Task---------------
 $vm = New-Object VMware.Vim.ManagedObjectReference
