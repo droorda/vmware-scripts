@@ -157,9 +157,6 @@ Function xMove-VM {
 
     # Source VM to migrate
 
-    # Dest Datastore to migrate VM to
-    $datastore_view = (Get-Datastore -Server $destVCConn -Name $datastore)
-
     # Dest Cluster/ResourcePool to migrate VM to
     if($cluster) {
         $cluster_view = (Get-Cluster -Server $destVCConn -Name $cluster)
@@ -206,6 +203,14 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
         if($device -is [VMware.Vim.VirtualEthernetCard]) {
             $vmNetworkAdapters += $device
         }
+
+    # Dest Datastore to migrate VM to
+    if ($datastore -is [string]) {
+        $datastore_view = ($cluster_view | Get-Datastore -Server $destvc -Name $datastore)
+    } elseif ($datastore) {
+        $datastore_view = $datastore
+    } else {
+        $datastore_view = ($cluster_view | Get-Datastore -Server $destvc -Name ($VM | get-datastore).name)
     }
 <#
 #---------------CheckRelocate_Task---------------
