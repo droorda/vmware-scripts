@@ -440,6 +440,7 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
 
 # Variables that must be defined
 
+<#
 $vmname = "TinyVM-2"
 $sourceVC = "vcenter60-1.primp-industries.com"
 $sourceVCUsername = "administrator@vghetto.local"
@@ -465,6 +466,8 @@ xMove-VM -sourcevc $sourceVCConn -destvc $destVCConn -VM $vmname -switchtype $sw
 # Disconnect from Source/Destination VC
 Disconnect-VIServer -Server $sourceVCConn -Confirm:$false
 Disconnect-VIServer -Server $destVCConn -Confirm:$false
+#>
+
 <#
 #---------------RelocateVM_Task---------------
 $spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
