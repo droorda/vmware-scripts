@@ -195,14 +195,6 @@ $_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (G
 $_this.CheckRelocate_Task($vm, $spec, $testType)
 #>
 
-    # Find all Etherenet Devices for given VM which
-    # we will need to change its network at the destination
-    $vmNetworkAdapters = @()
-    $devices = $vm_view.Config.Hardware.Device
-    foreach ($device in $devices) {
-        if($device -is [VMware.Vim.VirtualEthernetCard]) {
-            $vmNetworkAdapters += $device
-        }
 
     # Dest Datastore to migrate VM to
     if ($datastore -is [string]) {
@@ -287,6 +279,16 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     $service.url = "https://$destVC"
     $spec.service = $service
 
+    # Find all Etherenet Devices for given VM which
+    # we will need to change its network at the destination
+    $vmNetworkAdapters = @()
+    # $devices = $vm_view.Config.Hardware.Device
+    # foreach ($device in $devices) {
+    #     if($device -is [VMware.Vim.VirtualEthernetCard]) {
+    #         $vmNetworkAdapters += $device
+    #     }
+    # }
+    $vmNetworkAdapters += $VM | Get-NetworkAdapter
     # Create VM spec depending if destination networking
     # is using Distributed Virtual Switch (VDS) or
     # is using Virtual Standard Switch (VSS)
