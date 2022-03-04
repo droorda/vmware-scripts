@@ -83,9 +83,6 @@ Function xMove-VM {
     [switch]$TrustAllCerts
     )
 
-    # Retrieve Source VC SSL Thumbprint
-    $vcurl = "https://" + $destVC
-add-type @"
 #     if ($TrustAllCertificates) {
 #         # Create a compilation environment
 #         $Provider=New-Object Microsoft.CSharp.CSharpCodeProvider
@@ -147,6 +144,10 @@ add-type @"
             Add-Type -TypeDefinition $TypeDefinition
         }
     }
+
+    # Retrieve Source VC SSL Thumbprint
+    $vcurl = "https://" + $destVC
+
     # Need to do simple GET connection for this method to work
     Invoke-RestMethod -Uri $VCURL -Method Get | Out-Null
 
