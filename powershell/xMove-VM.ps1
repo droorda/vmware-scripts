@@ -154,6 +154,7 @@ Function xMove-VM {
     $endpoint_request = [System.Net.Webrequest]::Create("$vcurl")
     # Get Thumbprint + add colons for a valid Thumbprint
     $destVCThumbprint = ($endpoint_request.ServicePoint.Certificate.GetCertHashString()) -replace '(..(?!$))','$1:'
+    Write-Verbose "destVCThumbprint : $destVCThumbprint"
 
     # Source VM to migrate
     if ($vm -is [string]) {
@@ -179,6 +180,8 @@ Function xMove-VM {
             $resource = $cluster_view.ExtensionData.resourcePool
         }
     }
+    Write-Verbose "cluster_view`n$($cluster_view | Format-Table | Out-String)"
+    Write-Verbose "resource`n$($resource | Format-Table | Out-String)"
 
     # Dest ESXi host to migrate VM to
     if ($vmhost) {
@@ -186,6 +189,8 @@ Function xMove-VM {
     } else {
         $vmhost_view = $cluster_view | Get-VMHost | Get-Random
     }
+    Write-Verbose "vmhost_view`n$($vmhost_view | Format-Table | Out-String)"
+
 <#
 #---------------CheckRelocate_Task---------------
 $vm = New-Object VMware.Vim.ManagedObjectReference
@@ -218,6 +223,8 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     } else {
         $datastore_view = ($cluster_view | Get-Datastore -Server $destvc -Name ($VM | get-datastore).name)
     }
+    Write-Verbose "datastore_view`n$($datastore_view | Format-Table | Out-String)"
+
 <#
 #---------------CheckRelocate_Task---------------
 $vm = New-Object VMware.Vim.ManagedObjectReference
@@ -256,6 +263,7 @@ $_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (G
 $_this.CheckRelocate_Task($vm, $spec, $testType)
 #>
 
+
     # Relocate Spec for Migration
     $spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
     $spec.datastore = $datastore_view.Id
@@ -291,6 +299,8 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     }
     $service.sslThumbprint = $destVCThumbprint
     $service.url = "https://$destVC"
+    Write-Verbose "service`n$($service | Format-List | Out-String)"
+
     $spec.service = $service
 
     # Find all Etherenet Devices for given VM which
@@ -303,6 +313,8 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     #     }
     # }
     $vmNetworkAdapters += $VM | Get-NetworkAdapter
+    Write-Verbose "vmNetworkAdapters`n$($vmNetworkAdapters | Format-Table | Out-String)"
+
     # Create VM spec depending if destination networking
     # is using Distributed Virtual Switch (VDS) or
     # is using Virtual Standard Switch (VSS)
@@ -313,6 +325,7 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
         $vmnetworknames = @($vmNetworkAdapters.NetworkName)
     }
     if (($switchtype -eq "vds") -or (("" -eq $switchtype) -and (($vmNetworkAdapters[0].ExtensionData.DeviceInfo.Summary -match 'DVSwitch.*')))) {
+        Write-Verbose "Distributed Switch Found"
         foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
             # New VM Network to assign vNIC
             $vmnetworkname = $vmnetworknames[$count]
@@ -332,8 +345,10 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
             $dev.device.backing.port.portgroupKey = $dvpg_key
             $spec.DeviceChange += $dev
             $count++
+            Write-Verbose "Network $vmnetworkname`n$($dev.Device | Format-List | Out-String)`nBacking`n$($dev.Device.backing | Format-List | Out-String)"
         }
     } else {
+        Write-Verbose "Standard Switch Found"
         foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
             # New VM Network to assign vNIC
             $vmnetworkname = $vmnetworknames[$count]
@@ -348,6 +363,8 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
             $count++
         }
     }
+    Write-Verbose "DeviceChange`n$($spec.DeviceChange | Format-List | Out-String)`n$($spec.DeviceChange.Device | foreach-Object {$_ | Format-List | Out-String})"
+
     if ($folder -is [String]) {
         $folderpath = $cluster_view | Get-Datacenter
         $folder.Split('/') | Foreach-Object {
@@ -499,6 +516,10 @@ $testType[4] = 'datastoreTests'
 $_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
 $_this.CheckRelocate_Task($vm, $spec, $testType)
 #>
+
+    Write-Verbose "spec`n$($spec | Format-List | Out-String)"
+
+
     # Issue Cross VC-vMotion
     $task = $vm_view.RelocateVM_Task($spec,"defaultPriority")
     $task1 = Get-Task -Id $task.ToString()
