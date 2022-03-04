@@ -38,6 +38,7 @@
 #>
 
 Function xMove-VM {
+    [CmdletBinding()]
     param(
     [Parameter(
         Position=0,
