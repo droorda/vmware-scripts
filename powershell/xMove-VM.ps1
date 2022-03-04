@@ -434,8 +434,12 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
 #>
     # Issue Cross VC-vMotion
     $task = $vm_view.RelocateVM_Task($spec,"defaultPriority")
-    $task1 = Get-Task -Id ("Task-$($task.value)")
-    $task1 | Wait-Task
+    $task1 = Get-Task -Id $task.ToString()
+    Try {
+        $task1 | Wait-Task -ErrorAction Stop
+    } catch {
+        Write-Warning $_.Exception.Message
+    }
 }
 
 # Variables that must be defined
