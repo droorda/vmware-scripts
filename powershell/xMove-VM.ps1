@@ -147,6 +147,28 @@ add-type @"
 
     # Dest ESXi host to migrate VM to
     $vmhost_view = (Get-VMHost -Server $destVCConn -Name $vmhost)
+<#
+#---------------CheckRelocate_Task---------------
+$vm = New-Object VMware.Vim.ManagedObjectReference
+$vm.Type = 'VirtualMachine'
+$vm.Value = 'vm-109830'
+$spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
+$spec.Service = New-Object VMware.Vim.ServiceLocator
+$spec.Service.Credential = New-Object VMware.Vim.ServiceLocatorSAMLCredential
+$spec.Service.Credential.Token = 'Sensitive data is not recorded'
+$spec.Service.SslThumbprint = 'F2:98:C3:B8:0C:46:87:76:13:88:D9:46:B1:B7:10:90:66:92:82:1E'
+$spec.Service.InstanceUuid = '1bd6fbc3-30cd-4e97-be3b-48ca8bc30482'
+$spec.Service.Url = 'https://DLC-VCSA.Prod-iNet.com:443/sdk'
+$spec.Pool = New-Object VMware.Vim.ManagedObjectReference
+$spec.Pool.Type = 'ResourcePool'
+$spec.Pool.Value = 'resgroup-64'
+$testType = New-Object String[] (3)
+$testType[0] = 'sourceTests'
+$testType[1] = 'resourcePoolTests'
+$testType[2] = 'hostTests'
+$_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
+$_this.CheckRelocate_Task($vm, $spec, $testType)
+#>
 
     # Find all Etherenet Devices for given VM which
     # we will need to change its network at the destination
@@ -157,6 +179,43 @@ add-type @"
             $vmNetworkAdapters += $device
         }
     }
+<#
+#---------------CheckRelocate_Task---------------
+$vm = New-Object VMware.Vim.ManagedObjectReference
+$vm.Type = 'VirtualMachine'
+$vm.Value = 'vm-109830'
+$spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
+$spec.Disk = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator[] (2)
+$spec.Disk[0] = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
+$spec.Disk[0].Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Disk[0].Datastore.Type = 'Datastore'
+$spec.Disk[0].Datastore.Value = 'datastore-2045'
+$spec.Disk[0].DiskId = 2000
+$spec.Disk[1] = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
+$spec.Disk[1].Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Disk[1].Datastore.Type = 'Datastore'
+$spec.Disk[1].Datastore.Value = 'datastore-2045'
+$spec.Disk[1].DiskId = 2001
+$spec.Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Datastore.Type = 'Datastore'
+$spec.Datastore.Value = 'datastore-2045'
+$spec.Service = New-Object VMware.Vim.ServiceLocator
+$spec.Service.Credential = New-Object VMware.Vim.ServiceLocatorSAMLCredential
+$spec.Service.Credential.Token = 'Sensitive data is not recorded'
+$spec.Service.SslThumbprint = 'F2:98:C3:B8:0C:46:87:76:13:88:D9:46:B1:B7:10:90:66:92:82:1E'
+$spec.Service.InstanceUuid = '1bd6fbc3-30cd-4e97-be3b-48ca8bc30482'
+$spec.Service.Url = 'https://DLC-VCSA.Prod-iNet.com:443/sdk'
+$spec.Pool = New-Object VMware.Vim.ManagedObjectReference
+$spec.Pool.Type = 'ResourcePool'
+$spec.Pool.Value = 'resgroup-64'
+$testType = New-Object String[] (4)
+$testType[0] = 'sourceTests'
+$testType[1] = 'resourcePoolTests'
+$testType[2] = 'datastoreTests'
+$testType[3] = 'hostTests'
+$_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
+$_this.CheckRelocate_Task($vm, $spec, $testType)
+#>
 
     # Relocate Spec for Migration
     $spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
@@ -235,9 +294,144 @@ add-type @"
             $count++
         }
     }
+<#
+#---------------CheckRelocate_Task---------------
+$vm = New-Object VMware.Vim.ManagedObjectReference
+$vm.Type = 'VirtualMachine'
+$vm.Value = 'vm-109830'
+$spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
+$spec.DeviceChange = New-Object VMware.Vim.VirtualDeviceConfigSpec[] (1)
+$spec.DeviceChange[0] = New-Object VMware.Vim.VirtualDeviceConfigSpec
+$spec.DeviceChange[0].Device = New-Object VMware.Vim.VirtualVmxnet3
+$spec.DeviceChange[0].Device.MacAddress = '00:50:56:b3:ca:2f'
+$spec.DeviceChange[0].Device.ResourceAllocation = New-Object VMware.Vim.VirtualEthernetCardResourceAllocation
+$spec.DeviceChange[0].Device.ResourceAllocation.Limit = -1
+$spec.DeviceChange[0].Device.ResourceAllocation.Reservation = 0
+$spec.DeviceChange[0].Device.ResourceAllocation.Share = New-Object VMware.Vim.SharesInfo
+$spec.DeviceChange[0].Device.ResourceAllocation.Share.Shares = 50
+$spec.DeviceChange[0].Device.ResourceAllocation.Share.Level = 'normal'
+$spec.DeviceChange[0].Device.Connectable = New-Object VMware.Vim.VirtualDeviceConnectInfo
+$spec.DeviceChange[0].Device.Connectable.Connected = $true
+$spec.DeviceChange[0].Device.Connectable.MigrateConnect = 'unset'
+$spec.DeviceChange[0].Device.Connectable.AllowGuestControl = $true
+$spec.DeviceChange[0].Device.Connectable.StartConnected = $true
+$spec.DeviceChange[0].Device.Connectable.Status = 'ok'
+$spec.DeviceChange[0].Device.Backing = New-Object VMware.Vim.VirtualEthernetCardDistributedVirtualPortBackingInfo
+$spec.DeviceChange[0].Device.Backing.Port = New-Object VMware.Vim.DistributedVirtualSwitchPortConnection
+$spec.DeviceChange[0].Device.Backing.Port.SwitchUuid = '50 0c d1 86 75 47 0a 57-3c c1 98 e3 6b 36 6e 03'
+$spec.DeviceChange[0].Device.Backing.Port.PortgroupKey = 'dvportgroup-2085'
+$spec.DeviceChange[0].Device.AddressType = 'assigned'
+$spec.DeviceChange[0].Device.ControllerKey = 100
+$spec.DeviceChange[0].Device.UnitNumber = 7
+$spec.DeviceChange[0].Device.WakeOnLanEnabled = $true
+$spec.DeviceChange[0].Device.SlotInfo = New-Object VMware.Vim.VirtualDevicePciBusSlotInfo
+$spec.DeviceChange[0].Device.SlotInfo.PciSlotNumber = 192
+$spec.DeviceChange[0].Device.UptCompatibilityEnabled = $true
+$spec.DeviceChange[0].Device.DeviceInfo = New-Object VMware.Vim.Description
+$spec.DeviceChange[0].Device.DeviceInfo.Summary = 'DVSwitch: 50 33 5b 75 f0 ae 7a c1-eb d5 6c 3c cb 7b 39 03'
+$spec.DeviceChange[0].Device.DeviceInfo.Label = 'Network adapter 1'
+$spec.DeviceChange[0].Device.Key = 4000
+$spec.DeviceChange[0].Operation = 'edit'
+$spec.Service = New-Object VMware.Vim.ServiceLocator
+$spec.Service.Credential = New-Object VMware.Vim.ServiceLocatorSAMLCredential
+$spec.Service.Credential.Token = 'Sensitive data is not recorded'
+$spec.Service.SslThumbprint = 'F2:98:C3:B8:0C:46:87:76:13:88:D9:46:B1:B7:10:90:66:92:82:1E'
+$spec.Service.InstanceUuid = '1bd6fbc3-30cd-4e97-be3b-48ca8bc30482'
+$spec.Service.Url = 'https://DLC-VCSA.Prod-iNet.com:443/sdk'
+$spec.Pool = New-Object VMware.Vim.ManagedObjectReference
+$spec.Pool.Type = 'ResourcePool'
+$spec.Pool.Value = 'resgroup-64'
+$testType = New-Object String[] (4)
+$testType[0] = 'sourceTests'
+$testType[1] = 'resourcePoolTests'
+$testType[2] = 'hostTests'
+$testType[3] = 'networkTests'
+$_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
+$_this.CheckRelocate_Task($vm, $spec, $testType)
+#>
 
     Write-Host "`nMigrating $vmname from $sourceVC to $destVC ...`n"
 
+<#
+#---------------FindRulesForVm---------------
+$vm = New-Object VMware.Vim.ManagedObjectReference
+$vm.Type = 'VirtualMachine'
+$vm.Value = 'vm-109830'
+$_this = Get-View -Id 'ClusterComputeResource-domain-c14769' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
+$_this.FindRulesForVm($vm)
+
+#---------------CheckRelocate_Task---------------
+$vm = New-Object VMware.Vim.ManagedObjectReference
+$vm.Type = 'VirtualMachine'
+$vm.Value = 'vm-109830'
+$spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
+$spec.Disk = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator[] (2)
+$spec.Disk[0] = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
+$spec.Disk[0].Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Disk[0].Datastore.Type = 'Datastore'
+$spec.Disk[0].Datastore.Value = 'datastore-2045'
+$spec.Disk[0].DiskId = 2000
+$spec.Disk[1] = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
+$spec.Disk[1].Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Disk[1].Datastore.Type = 'Datastore'
+$spec.Disk[1].Datastore.Value = 'datastore-2045'
+$spec.Disk[1].DiskId = 2001
+$spec.Folder = New-Object VMware.Vim.ManagedObjectReference
+$spec.Folder.Type = 'Folder'
+$spec.Folder.Value = 'group-v11385'
+$spec.Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Datastore.Type = 'Datastore'
+$spec.Datastore.Value = 'datastore-2045'
+$spec.DeviceChange = New-Object VMware.Vim.VirtualDeviceConfigSpec[] (1)
+$spec.DeviceChange[0] = New-Object VMware.Vim.VirtualDeviceConfigSpec
+$spec.DeviceChange[0].Device = New-Object VMware.Vim.VirtualVmxnet3
+$spec.DeviceChange[0].Device.MacAddress = '00:50:56:b3:ca:2f'
+$spec.DeviceChange[0].Device.ResourceAllocation = New-Object VMware.Vim.VirtualEthernetCardResourceAllocation
+$spec.DeviceChange[0].Device.ResourceAllocation.Limit = -1
+$spec.DeviceChange[0].Device.ResourceAllocation.Reservation = 0
+$spec.DeviceChange[0].Device.ResourceAllocation.Share = New-Object VMware.Vim.SharesInfo
+$spec.DeviceChange[0].Device.ResourceAllocation.Share.Shares = 50
+$spec.DeviceChange[0].Device.ResourceAllocation.Share.Level = 'normal'
+$spec.DeviceChange[0].Device.Connectable = New-Object VMware.Vim.VirtualDeviceConnectInfo
+$spec.DeviceChange[0].Device.Connectable.Connected = $true
+$spec.DeviceChange[0].Device.Connectable.MigrateConnect = 'unset'
+$spec.DeviceChange[0].Device.Connectable.AllowGuestControl = $true
+$spec.DeviceChange[0].Device.Connectable.StartConnected = $true
+$spec.DeviceChange[0].Device.Connectable.Status = 'ok'
+$spec.DeviceChange[0].Device.Backing = New-Object VMware.Vim.VirtualEthernetCardDistributedVirtualPortBackingInfo
+$spec.DeviceChange[0].Device.Backing.Port = New-Object VMware.Vim.DistributedVirtualSwitchPortConnection
+$spec.DeviceChange[0].Device.Backing.Port.SwitchUuid = '50 0c d1 86 75 47 0a 57-3c c1 98 e3 6b 36 6e 03'
+$spec.DeviceChange[0].Device.Backing.Port.PortgroupKey = 'dvportgroup-2085'
+$spec.DeviceChange[0].Device.AddressType = 'assigned'
+$spec.DeviceChange[0].Device.ControllerKey = 100
+$spec.DeviceChange[0].Device.UnitNumber = 7
+$spec.DeviceChange[0].Device.WakeOnLanEnabled = $true
+$spec.DeviceChange[0].Device.SlotInfo = New-Object VMware.Vim.VirtualDevicePciBusSlotInfo
+$spec.DeviceChange[0].Device.SlotInfo.PciSlotNumber = 192
+$spec.DeviceChange[0].Device.UptCompatibilityEnabled = $true
+$spec.DeviceChange[0].Device.DeviceInfo = New-Object VMware.Vim.Description
+$spec.DeviceChange[0].Device.DeviceInfo.Summary = 'DVSwitch: 50 33 5b 75 f0 ae 7a c1-eb d5 6c 3c cb 7b 39 03'
+$spec.DeviceChange[0].Device.DeviceInfo.Label = 'Network adapter 1'
+$spec.DeviceChange[0].Device.Key = 4000
+$spec.DeviceChange[0].Operation = 'edit'
+$spec.Service = New-Object VMware.Vim.ServiceLocator
+$spec.Service.Credential = New-Object VMware.Vim.ServiceLocatorSAMLCredential
+$spec.Service.Credential.Token = 'Sensitive data is not recorded'
+$spec.Service.SslThumbprint = 'F2:98:C3:B8:0C:46:87:76:13:88:D9:46:B1:B7:10:90:66:92:82:1E'
+$spec.Service.InstanceUuid = '1bd6fbc3-30cd-4e97-be3b-48ca8bc30482'
+$spec.Service.Url = 'https://DLC-VCSA.Prod-iNet.com:443/sdk'
+$spec.Pool = New-Object VMware.Vim.ManagedObjectReference
+$spec.Pool.Type = 'ResourcePool'
+$spec.Pool.Value = 'resgroup-64'
+$testType = New-Object String[] (5)
+$testType[0] = 'sourceTests'
+$testType[1] = 'resourcePoolTests'
+$testType[2] = 'hostTests'
+$testType[3] = 'networkTests'
+$testType[4] = 'datastoreTests'
+$_this = Get-View -Id 'VirtualMachineProvisioningChecker-ProvChecker' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
+$_this.CheckRelocate_Task($vm, $spec, $testType)
+#>
     # Issue Cross VC-vMotion
     $task = $vm_view.RelocateVM_Task($spec,"defaultPriority")
     $task1 = Get-Task -Id ("Task-$($task.value)")
@@ -271,3 +465,73 @@ xMove-VM -sourcevc $sourceVCConn -destvc $destVCConn -VM $vmname -switchtype $sw
 # Disconnect from Source/Destination VC
 Disconnect-VIServer -Server $sourceVCConn -Confirm:$false
 Disconnect-VIServer -Server $destVCConn -Confirm:$false
+<#
+#---------------RelocateVM_Task---------------
+$spec = New-Object VMware.Vim.VirtualMachineRelocateSpec
+$spec.Disk = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator[] (2)
+$spec.Disk[0] = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
+$spec.Disk[0].DiskMoveType = 'moveAllDiskBackingsAndDisallowSharing'
+$spec.Disk[0].Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Disk[0].Datastore.Type = 'Datastore'
+$spec.Disk[0].Datastore.Value = 'datastore-2045'
+$spec.Disk[0].DiskId = 2000
+$spec.Disk[1] = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
+$spec.Disk[1].DiskMoveType = 'moveAllDiskBackingsAndDisallowSharing'
+$spec.Disk[1].Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Disk[1].Datastore.Type = 'Datastore'
+$spec.Disk[1].Datastore.Value = 'datastore-2045'
+$spec.Disk[1].DiskId = 2001
+$spec.Folder = New-Object VMware.Vim.ManagedObjectReference
+$spec.Folder.Type = 'Folder'
+$spec.Folder.Value = 'group-v11385'
+$spec.Datastore = New-Object VMware.Vim.ManagedObjectReference
+$spec.Datastore.Type = 'Datastore'
+$spec.Datastore.Value = 'datastore-2045'
+$spec.DeviceChange = New-Object VMware.Vim.VirtualDeviceConfigSpec[] (1)
+$spec.DeviceChange[0] = New-Object VMware.Vim.VirtualDeviceConfigSpec
+$spec.DeviceChange[0].Device = New-Object VMware.Vim.VirtualVmxnet3
+$spec.DeviceChange[0].Device.MacAddress = '00:50:56:b3:ca:2f'
+$spec.DeviceChange[0].Device.ResourceAllocation = New-Object VMware.Vim.VirtualEthernetCardResourceAllocation
+$spec.DeviceChange[0].Device.ResourceAllocation.Limit = -1
+$spec.DeviceChange[0].Device.ResourceAllocation.Reservation = 0
+$spec.DeviceChange[0].Device.ResourceAllocation.Share = New-Object VMware.Vim.SharesInfo
+$spec.DeviceChange[0].Device.ResourceAllocation.Share.Shares = 50
+$spec.DeviceChange[0].Device.ResourceAllocation.Share.Level = 'normal'
+$spec.DeviceChange[0].Device.Connectable = New-Object VMware.Vim.VirtualDeviceConnectInfo
+$spec.DeviceChange[0].Device.Connectable.Connected = $true
+$spec.DeviceChange[0].Device.Connectable.MigrateConnect = 'unset'
+$spec.DeviceChange[0].Device.Connectable.AllowGuestControl = $true
+$spec.DeviceChange[0].Device.Connectable.StartConnected = $true
+$spec.DeviceChange[0].Device.Connectable.Status = 'ok'
+$spec.DeviceChange[0].Device.Backing = New-Object VMware.Vim.VirtualEthernetCardDistributedVirtualPortBackingInfo
+$spec.DeviceChange[0].Device.Backing.Port = New-Object VMware.Vim.DistributedVirtualSwitchPortConnection
+$spec.DeviceChange[0].Device.Backing.Port.SwitchUuid = '50 0c d1 86 75 47 0a 57-3c c1 98 e3 6b 36 6e 03'
+$spec.DeviceChange[0].Device.Backing.Port.PortgroupKey = 'dvportgroup-2085'
+$spec.DeviceChange[0].Device.AddressType = 'assigned'
+$spec.DeviceChange[0].Device.ControllerKey = 100
+$spec.DeviceChange[0].Device.UnitNumber = 7
+$spec.DeviceChange[0].Device.WakeOnLanEnabled = $true
+$spec.DeviceChange[0].Device.SlotInfo = New-Object VMware.Vim.VirtualDevicePciBusSlotInfo
+$spec.DeviceChange[0].Device.SlotInfo.PciSlotNumber = 192
+$spec.DeviceChange[0].Device.UptCompatibilityEnabled = $true
+$spec.DeviceChange[0].Device.DeviceInfo = New-Object VMware.Vim.Description
+$spec.DeviceChange[0].Device.DeviceInfo.Summary = 'DVSwitch: 50 33 5b 75 f0 ae 7a c1-eb d5 6c 3c cb 7b 39 03'
+$spec.DeviceChange[0].Device.DeviceInfo.Label = 'Network adapter 1'
+$spec.DeviceChange[0].Device.Key = 4000
+$spec.DeviceChange[0].Operation = 'edit'
+$spec.Service = New-Object VMware.Vim.ServiceLocator
+$spec.Service.Credential = New-Object VMware.Vim.ServiceLocatorSAMLCredential
+$spec.Service.Credential.Token = 'Sensitive data is not recorded'
+$spec.Service.SslThumbprint = 'F2:98:C3:B8:0C:46:87:76:13:88:D9:46:B1:B7:10:90:66:92:82:1E'
+$spec.Service.InstanceUuid = '1bd6fbc3-30cd-4e97-be3b-48ca8bc30482'
+$spec.Service.Url = 'https://DLC-VCSA.Prod-iNet.com:443/sdk'
+$spec.Host = New-Object VMware.Vim.ManagedObjectReference
+$spec.Host.Type = 'HostSystem'
+$spec.Host.Value = 'host-4003'
+$spec.Pool = New-Object VMware.Vim.ManagedObjectReference
+$spec.Pool.Type = 'ResourcePool'
+$spec.Pool.Value = 'resgroup-64'
+$priority = 'lowPriority'
+$_this = Get-View -Id 'VirtualMachine-vm-109830' -Server (Get-VcConnection -VcInstanceUuid '0b18a878-c2f9-40ac-b36d-efb68941cc52')
+$_this.RelocateVM_Task($spec, $priority)
+#>
