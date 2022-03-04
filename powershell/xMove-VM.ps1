@@ -62,19 +62,67 @@ Function xMove-VM {
     # Retrieve Source VC SSL Thumbprint
     $vcurl = "https://" + $destVC
 add-type @"
+#     if ($TrustAllCertificates) {
+#         # Create a compilation environment
+#         $Provider=New-Object Microsoft.CSharp.CSharpCodeProvider
+#         $Compiler=$Provider.CreateCompiler()
+#         $Params=New-Object System.CodeDom.Compiler.CompilerParameters
+#         $Params.GenerateExecutable=$False
+#         $Params.GenerateInMemory=$True
+#         $Params.IncludeDebugInformation=$False
+#         $Params.ReferencedAssemblies.Add("System.DLL") > $null
+#         $TASource=@'
+# namespace Local.ToolkitExtensions.Net.CertificatePolicy {
+#     public class TrustAll : System.Net.ICertificatePolicy {
+#         public TrustAll() {}
+#         public bool CheckValidationResult(
+#             System.Net.ServicePoint sp,
+#                 System.Security.Cryptography.X509Certificates.X509Certificate cert,
+#                 System.Net.WebRequest req,
+#                 int problem
+#         ) {
+#             return true;
+#         }
+#     }
+# }
+# '@
+#         $TAResults=$Provider.CompileAssemblyFromSource($Params,$TASource)
+#         $TAAssembly=$TAResults.CompiledAssembly
+
+#         ## We now create an instance of the TrustAll and attach it to the ServicePointManager
+#         $TrustAll=$TAAssembly.CreateInstance("Local.ToolkitExtensions.Net.CertificatePolicy.TrustAll")
+#         [System.Net.ServicePointManager]::CertificatePolicy=$TrustAll
+#     }
+# if ($PSVersionTable.PSVersion.Major -gt 5) {
+#     $Param.SkipHeaderValidation = $ignoreCertFailure
+#     $Param.SkipCertificateCheck = $ignoreCertFailure
+# } else {
+#     Ignore-SSLCertificates
+# }
+
+
+# ! ERRORS in PS 7
+    if ($TrustAllCerts){
+        $TypeDefinition = @"
         using System.Net;
         using System.Security.Cryptography.X509Certificates;
-
-            public class IDontCarePolicy : ICertificatePolicy {
-            public IDontCarePolicy() {}
+        public class TrustAllCertsPolicy : ICertificatePolicy {
+            public TrustAllCertsPolicy() {}
             public bool CheckValidationResult(
-                ServicePoint sPoint, X509Certificate cert,
-                WebRequest wRequest, int certProb) {
-                return true;
+                ServicePoint sPoint,
+                X509Certificate cert,
+                WebRequest wRequest,
+                int certProb
+            ) {
+                    return true;
             }
         }
 "@
-    [System.Net.ServicePointManager]::CertificatePolicy = new-object IDontCarePolicy
+
+        if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
+            Add-Type -TypeDefinition $TypeDefinition
+        }
+    }
     # Need to do simple GET connection for this method to work
     Invoke-RestMethod -Uri $VCURL -Method Get | Out-Null
 
