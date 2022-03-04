@@ -57,6 +57,8 @@ Function xMove-VM {
     [String]$vmnetworks,
     [Int]$xvctype,
     [Boolean]$uppercaseuuid
+    [Object]$folder
+    ,
     )
 
     # Retrieve Source VC SSL Thumbprint
@@ -294,6 +296,19 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
             $count++
         }
     }
+    if ($folder -is [String]) {
+        $folderpath = $cluster_view | Get-Datacenter
+        $folder.Split('/') | Foreach-Object {
+            $folderpath = $folderpath | Get-Folder -NoRecursion -Type VM -Name $_
+        }
+        $folder = $folderpath
+    }
+
+    if ($folder) {
+        $spec.Folder = $folder.ExtensionData.MoRef
+    }
+
+
 <#
 #---------------CheckRelocate_Task---------------
 $vm = New-Object VMware.Vim.ManagedObjectReference
