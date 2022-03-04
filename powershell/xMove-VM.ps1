@@ -274,9 +274,9 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     # For some xVC-vMotion, VC's InstanceUUID must be in all caps
     # Haven't figured out why, but this flag would allow user to toggle (default=false)
     if($uppercaseuuid) {
-        $service.instanceUuid = $destVCConn.InstanceUuid
+        $service.instanceUuid = $destvc.InstanceUuid
     } else {
-        $service.instanceUuid = ($destVCConn.InstanceUuid).ToUpper()
+        $service.instanceUuid = ($destvc.InstanceUuid).ToUpper()
     }
     $service.sslThumbprint = $destVCThumbprint
     $service.url = "https://$destVC"
