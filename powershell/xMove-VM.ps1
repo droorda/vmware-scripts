@@ -307,10 +307,15 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     # is using Distributed Virtual Switch (VDS) or
     # is using Virtual Standard Switch (VSS)
     $count = 0
-    if($switchtype -eq "vds") {
-        foreach ($vmNetworkAdapter in $vmNetworkAdapters) {
+    if ($vmnetworks) {
+        $vmnetworknames = $vmnetworks -split ","
+    } else {
+        $vmnetworknames = @($vmNetworkAdapters.NetworkName)
+    }
+    if (($switchtype -eq "vds") -or (("" -eq $switchtype) -and (($vmNetworkAdapters[0].ExtensionData.DeviceInfo.Summary -match 'DVSwitch.*')))) {
+        foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
             # New VM Network to assign vNIC
-            $vmnetworkname = ($vmnetworks -split ",")[$count]
+            $vmnetworkname = $vmnetworknames[$count]
 
             # Extract Distributed Portgroup required info
             $dvpg = Get-VDPortgroup -Server $destvc -Name $vmnetworkname
@@ -329,9 +334,9 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
             $count++
         }
     } else {
-        foreach ($vmNetworkAdapter in $vmNetworkAdapters) {
+        foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
             # New VM Network to assign vNIC
-            $vmnetworkname = ($vmnetworks -split ",")[$count]
+            $vmnetworkname = $vmnetworknames[$count]
 
             # Device Change spec for VSS portgroup
             $dev = New-Object VMware.Vim.VirtualDeviceConfigSpec
