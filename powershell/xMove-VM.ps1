@@ -45,20 +45,41 @@ Function xMove-VM {
         ValueFromPipeline=$true,
         ValueFromPipelineByPropertyName=$true)
     ]
-    [VMware.VimAutomation.ViCore.Util10.VersionedObjectImpl]$sourcevc,
-    [VMware.VimAutomation.ViCore.Util10.VersionedObjectImpl]$destvc,
-    [String]$vm,
-    [String]$switchtype,
-    [String]$switch,
-    [String]$cluster,
-    [String]$resourcepool,
-    [String]$datastore,
-    [String]$vmhost,
-    [String]$vmnetworks,
-    [Int]$xvctype,
-    [Boolean]$uppercaseuuid
+    [VMware.VimAutomation.ViCore.Util10.VersionedObjectImpl]$sourcevc
+    ,
+    [Parameter(
+        Mandatory=$true
+    )]
+    [VMware.VimAutomation.ViCore.Util10.VersionedObjectImpl]$destvc
+    ,
+    [Parameter(
+        Mandatory=$true
+    )]
+    [pscredential]$destvcCredential
+    ,
+    [Object]$vm
+    ,
+    [String]$switchtype
+    ,
+    [Object]$switch
+    ,
+    [Object]$cluster
+    ,
+    [Object]$resourcepool
+    ,
+    [Object]$datastore
+    ,
     [Object]$folder
     ,
+    [Object]$vmhost
+    ,
+    [String]$vmnetworks
+    ,
+    [Int]$xvctype = 1
+    ,
+    [Boolean]$uppercaseuuid = $true
+    ,
+    [switch]$TrustAllCerts
     )
 
     # Retrieve Source VC SSL Thumbprint
