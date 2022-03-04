@@ -156,14 +156,28 @@ Function xMove-VM {
     $destVCThumbprint = ($endpoint_request.ServicePoint.Certificate.GetCertHashString()) -replace '(..(?!$))','$1:'
 
     # Source VM to migrate
-
-    # Dest Cluster/ResourcePool to migrate VM to
-    if($cluster) {
-        $cluster_view = (Get-Cluster -Server $destVCConn -Name $cluster)
-        $resource = $cluster_view.ExtensionData.resourcePool
+    if ($vm -is [string]) {
+        $vm_view = Get-View (Get-VM -Server $sourcevc -Name $vm) -Property Config.Hardware.Device
     } else {
-        $rp_view = (Get-ResourcePool -Server $destVCConn -Name $resourcepool)
+        $vm_view = Get-View $vm -Property Config.Hardware.Device
+    }
+    Write-Verbose "vm_view`n$($vm_view | Format-Table | Out-String)"
+    # Dest Cluster/ResourcePool to migrate VM to
+    if($resourcepool) {
+        $rp_view = (Get-ResourcePool -Server $destvc -Name $resourcepool)
+        $cluster_view = $rp_view.Parent
         $resource = $rp_view.ExtensionData.MoRef
+    } else {
+        if ($cluster -is [string]) {
+            $cluster_view = (Get-Cluster -Server $destvc -Name $cluster)
+            $resource = $cluster_view.ExtensionData.resourcePool
+        } elseif ($cluster) {
+            $cluster_view = $cluster
+            $resource = $cluster_view.ExtensionData.resourcePool
+        } else {
+            $cluster_view = (Get-Cluster -Server $destvc -Name ($VM | Get-Cluster).Name)
+            $resource = $cluster_view.ExtensionData.resourcePool
+        }
     }
 
     # Dest ESXi host to migrate VM to
