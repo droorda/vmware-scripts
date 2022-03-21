@@ -273,7 +273,7 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     # Relocate Spec Disk Locator
     if($xvctype -eq 1){
         $HDs = Get-VM -Server $sourcevc -Name $vm | Get-HardDisk
-        $HDs | %{
+        $HDs | ForEach-Object {
             $disk = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
             $disk.diskId = $_.Extensiondata.Key
             $SourceDS = $_.FileName.Split("]")[0].TrimStart("[")
