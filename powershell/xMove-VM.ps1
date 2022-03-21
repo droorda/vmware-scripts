@@ -316,7 +316,7 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     #         $vmNetworkAdapters += $device
     #     }
     # }
-    $vmNetworkAdapters += $VM | Get-NetworkAdapter
+    $vmNetworkAdapters += $VM | Get-NetworkAdapter # provides network info and network name
     Write-Verbose "vmNetworkAdapters`n$($vmNetworkAdapters | Format-Table | Out-String)"
 
     # Create VM spec depending if destination networking
