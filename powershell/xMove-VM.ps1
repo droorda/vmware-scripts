@@ -222,6 +222,10 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
         $datastore_view = $datastore
     } else {
         $datastore_view = ($cluster_view | Get-Datastore -Server $destvc -Name ($VM | get-datastore).name)
+        if ($datastore_view.count -gt 1) {
+            Write-Warning "Multiple Datastores not currently supportted"
+            return
+        }
     }
     Write-Verbose "datastore_view`n$($datastore_view | Format-Table | Out-String)"
 
