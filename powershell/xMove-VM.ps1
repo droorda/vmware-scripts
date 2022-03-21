@@ -322,51 +322,92 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     # Create VM spec depending if destination networking
     # is using Distributed Virtual Switch (VDS) or
     # is using Virtual Standard Switch (VSS)
-    $count = 0
-    if ($vmnetworks) {
-        $vmnetworknames = $vmnetworks -split ","
-    } else {
-        $vmnetworknames = @($vmNetworkAdapters.NetworkName)
-    }
-    if (($switchtype -eq "vds") -or (("" -eq $switchtype) -and (($vmNetworkAdapters[0].ExtensionData.DeviceInfo.Summary -match 'DVSwitch.*')))) {
-        Write-Verbose "Distributed Switch Found"
-        foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
-            # New VM Network to assign vNIC
-            $vmnetworkname = $vmnetworknames[$count]
-
-            # Extract Distributed Portgroup required info
-            $dvpg = Get-VDPortgroup -Server $destvc -Name $vmnetworkname
+    Foreach ($vmNetworkAdapter in $vmNetworkAdapters) {
+        if ($vmNetworkAdapter.NetworkName -eq 'none') {
+            Write-Verbose "Network Name of 'None' on NIC $($vmNetworkAdapter.Name) - Ignoring"
+        } elseif ($vmNetworkAdapters[0].ExtensionData.DeviceInfo.Summary -match 'DVSwitch.*') {
+            Write-Verbose "Distributed Switch Found"
+            Try {
+                $dvpg = $cluster_view | Get-Datacenter | Get-VDSwitch | Get-VDPortgroup -Name $vmNetworkAdapter.NetworkName
+            } Catch {
+                Write-Warning " Unable to Find Network Named '$($vmNetworkAdapter.NetworkName)' in Destination"
+                return
+            }
             $vds_uuid = (Get-View $dvpg.ExtensionData.Config.DistributedVirtualSwitch).Uuid
             $dvpg_key = $dvpg.ExtensionData.Config.key
 
             # Device Change spec for VSS portgroup
             $dev = New-Object VMware.Vim.VirtualDeviceConfigSpec
             $dev.Operation = "edit"
-            $dev.Device = $vmNetworkAdapter
+            $dev.Device = $vmNetworkAdapter.ExtensionData
             $dev.device.Backing = New-Object VMware.Vim.VirtualEthernetCardDistributedVirtualPortBackingInfo
             $dev.device.backing.port = New-Object VMware.Vim.DistributedVirtualSwitchPortConnection
             $dev.device.backing.port.switchUuid = $vds_uuid
             $dev.device.backing.port.portgroupKey = $dvpg_key
             $spec.DeviceChange += $dev
-            $count++
             Write-Verbose "Network $vmnetworkname`n$($dev.Device | Format-List | Out-String)`nBacking`n$($dev.Device.backing | Format-List | Out-String)"
-        }
-    } else {
-        Write-Verbose "Standard Switch Found"
-        foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
+        } else {
+            Write-Verbose "Standard Switch Found"
+            $vmNetworkAdapter.ExtensionData
             # New VM Network to assign vNIC
-            $vmnetworkname = $vmnetworknames[$count]
-
             # Device Change spec for VSS portgroup
             $dev = New-Object VMware.Vim.VirtualDeviceConfigSpec
             $dev.Operation = "edit"
-            $dev.Device = $vmNetworkAdapter
+            $dev.Device = $vmNetworkAdapter.ExtensionData
             $dev.device.backing = New-Object VMware.Vim.VirtualEthernetCardNetworkBackingInfo
-            $dev.device.backing.deviceName = $vmnetworkname
+            $dev.device.backing.deviceName = $vmNetworkAdapter.NetworkName
             $spec.DeviceChange += $dev
-            $count++
         }
     }
+
+
+    # $count = 0
+    # if ($vmnetworks) {
+    #     $vmnetworknames = $vmnetworks -split ","
+    # } else {
+    #     $vmnetworknames = @($vmNetworkAdapters.NetworkName)
+    # }
+    # if (($switchtype -eq "vds") -or ((-not $switchtype) -and (($vmNetworkAdapters[0].ExtensionData.DeviceInfo.Summary -match 'DVSwitch.*')))) {
+    #     Write-Verbose "Distributed Switch Found"
+    #     foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
+    #         # New VM Network to assign vNIC
+    #         $vmnetworkname = $vmnetworknames[$count]
+
+    #         # Extract Distributed Portgroup required info
+    #         if ($vmnetworkname -ne 'none') {
+    #             $dvpg = $cluster_view | Get-Datacenter | Get-VDSwitch | Get-VDPortgroup -Name $vmnetworkname
+    #             $vds_uuid = (Get-View $dvpg.ExtensionData.Config.DistributedVirtualSwitch).Uuid
+    #             $dvpg_key = $dvpg.ExtensionData.Config.key
+
+    #             # Device Change spec for VSS portgroup
+    #             $dev = New-Object VMware.Vim.VirtualDeviceConfigSpec
+    #             $dev.Operation = "edit"
+    #             $dev.Device = $vmNetworkAdapter
+    #             $dev.device.Backing = New-Object VMware.Vim.VirtualEthernetCardDistributedVirtualPortBackingInfo
+    #             $dev.device.backing.port = New-Object VMware.Vim.DistributedVirtualSwitchPortConnection
+    #             $dev.device.backing.port.switchUuid = $vds_uuid
+    #             $dev.device.backing.port.portgroupKey = $dvpg_key
+    #             $spec.DeviceChange += $dev
+    #             $count++
+    #             Write-Verbose "Network $vmnetworkname`n$($dev.Device | Format-List | Out-String)`nBacking`n$($dev.Device.backing | Format-List | Out-String)"
+    #         }
+    #     }
+    # } else {
+    #     Write-Verbose "Standard Switch Found"
+    #     foreach ($vmNetworkAdapter in $vmNetworkAdapters.ExtensionData) {
+    #         # New VM Network to assign vNIC
+    #         $vmnetworkname = $vmnetworknames[$count]
+
+    #         # Device Change spec for VSS portgroup
+    #         $dev = New-Object VMware.Vim.VirtualDeviceConfigSpec
+    #         $dev.Operation = "edit"
+    #         $dev.Device = $vmNetworkAdapter
+    #         $dev.device.backing = New-Object VMware.Vim.VirtualEthernetCardNetworkBackingInfo
+    #         $dev.device.backing.deviceName = $vmnetworkname
+    #         $spec.DeviceChange += $dev
+    #         $count++
+    #     }
+    # }
     Write-Verbose "DeviceChange`n$($spec.DeviceChange | Format-List | Out-String)`n$($spec.DeviceChange.Device | foreach-Object {$_ | Format-List | Out-String})"
 
     if ($folder -is [String]) {
