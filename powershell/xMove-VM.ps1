@@ -165,23 +165,36 @@ Function xMove-VM {
     Write-Verbose "vm_view`n$($vm_view | Format-Table | Out-String)"
     # Dest Cluster/ResourcePool to migrate VM to
     if($resourcepool) {
+        Write-Verbose "ResourcePool requested $resourcepool"
         $rp_view = (Get-ResourcePool -Server $destvc -Name $resourcepool)
         $cluster_view = $rp_view.Parent
         $resource = $rp_view.ExtensionData.MoRef
     } else {
-        if ($cluster -is [string]) {
-            $cluster_view = (Get-Cluster -Server $destvc -Name $cluster)
-            $resource = $cluster_view.ExtensionData.resourcePool
-        } elseif ($cluster) {
+        # * not used if param type is forced
+        # if ($cluster -is [string]) {
+        #     Write-Verbose "Cluster requested [String]$cluster"
+        #     $cluster_view = (Get-Cluster -Server $destvc -Name $cluster)
+        #     $resource = $cluster_view.ExtensionData.resourcePool
+        # } else
+        if ($cluster) {
+            Write-Verbose "Cluster requested [??????]$cluster"
             $cluster_view = $cluster
             $resource = $cluster_view.ExtensionData.resourcePool
         } else {
+            Write-Verbose "Cluster requested NULL"
             $cluster_view = (Get-Cluster -Server $destvc -Name ($VM | Get-Cluster).Name)
             $resource = $cluster_view.ExtensionData.resourcePool
         }
     }
     Write-Verbose "cluster_view`n$($cluster_view | Format-Table | Out-String)"
     Write-Verbose "resource`n$($resource | Format-Table | Out-String)"
+
+    if ($cluster_view.count -gt 1) {
+        Throw "Multiple Destination Clusters returned"
+    }
+    if ($resource.count -gt 1) {
+        Throw "Multiple Destination resource pools returned"
+    }
 
     # Dest ESXi host to migrate VM to
     if ($vmhost) {
@@ -223,7 +236,8 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
     } else {
         $datastore_view = ($cluster_view | Get-Datastore -Server $destvc -Name ($VM | get-datastore).name)
         if ($datastore_view.count -gt 1) {
-            Write-Warning "Multiple Datastores not currently supportted"
+            Write-Warning "Multiple Datastores not currently supported"
+            Write-Host "datastore_view`n$($datastore_view | Format-Table * | Out-String)"
             return
         }
     }
@@ -281,7 +295,11 @@ $_this.CheckRelocate_Task($vm, $spec, $testType)
             $disk = New-Object VMware.Vim.VirtualMachineRelocateSpecDiskLocator
             $disk.diskId = $_.Extensiondata.Key
             $SourceDS = $_.FileName.Split("]")[0].TrimStart("[")
-            $DestDS = Get-Datastore -Server $destvc -name $sourceDS
+            if ($datastore) {
+                $DestDS = Get-Datastore -Server $destvc -name $datastore
+            } else {
+                $DestDS = Get-Datastore -Server $destvc -name $sourceDS
+            }
             $disk.Datastore = $DestDS.ID
             $spec.disk += $disk
         }
