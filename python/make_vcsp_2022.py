@@ -6,6 +6,9 @@ __author__ = 'VMware, Inc.'
 __copyright__ = 'Copyright 2019 VMware, Inc. All rights reserved.'
 
 import argparse
+from asyncio.windows_events import NULL
+from multiprocessing.spawn import old_main_modules
+from xml.dom.minidom import Identified
 import boto3
 import datetime
 import hashlib
@@ -17,6 +20,8 @@ import sys
 
 from botocore.client import ClientError
 from dateutil.tz import tzutc
+from azure.storage.blob import BlobServiceClient, ContentSettings
+import urllib.parse
 
 VCSP_VERSION = 2
 ISO_FORMAT = "%Y-%m-%dT%H:%MZ"
@@ -73,6 +78,9 @@ def _make_item(directory, vcsp_type, name, files, description="", properties={},
     '''
     add type adapter metadata for OVF template
     '''
+    if len(name) > 80: #max size of name is 80 chars
+        extension = name.rsplit(".")[-1]
+        name = name[0:80-len(extension)-1]+"."+extension
     if "urn:uuid:" not in str(identifier):
         item_id = "urn:uuid:%s" % identifier
     else:
@@ -80,7 +88,7 @@ def _make_item(directory, vcsp_type, name, files, description="", properties={},
     type_metadata = None 
     if vcsp_type == VCSP_TYPE_OVF:
         # generate sample type metadata for OVF template so that subscriber can show OVF VM type
-        type_metadata_value = "{\"id\":\"%s\",\"version\":\"%s\",\"libraryIdParent\":\"%s\",\"isVappTemplate\":\"%s\",\"vmTemplate\":null,\"vappTemplate\":null,\"networks\":[],\"storagePolicyGroups\":null}" % (item_id, str(version), library_id, is_vapp_template)
+        type_metadata_value = "{'id':'%s','version':'%s','libraryIdParent':'%s','isVappTemplate':'%s','vmTemplate':null,'vappTemplate':null,'networks':[],'storagePolicyGroups':null}" % (item_id, str(version), library_id, is_vapp_template)
         type_metadata = {
                     "key": "type-metadata",
                     "value": type_metadata_value,
@@ -98,7 +106,7 @@ def _make_item(directory, vcsp_type, name, files, description="", properties={},
             "name": name,
             "metadata": [type_metadata],
             "properties": properties,
-            "selfHref": "%s/%s" % (directory, ITEM_FILE),
+            "selfHref": "%s/%s" % (urllib.parse.quote(directory), urllib.parse.quote(ITEM_FILE)),
             "type": vcsp_type
         }
     else:
@@ -110,7 +118,7 @@ def _make_item(directory, vcsp_type, name, files, description="", properties={},
             "id": item_id,
             "name": name,
             "properties": properties,
-            "selfHref": "%s/%s" % (directory, ITEM_FILE),
+            "selfHref": "%s/%s" % (urllib.parse.quote(directory), urllib.parse.quote(ITEM_FILE)),
             "type": vcsp_type
         } 
 
@@ -159,7 +167,7 @@ def _dir2item(path, directory, md5_enabled, lib_id):
                 "name": f,
                 "size": size,
                 "etag": folder_md5,
-                "hrefs": [ href ]
+                "hrefs": [ urllib.parse.quote(href,safe="/")]
             })
     return _make_item(name, vcsp_type, name, files_items, identifier = uuid.uuid4(), library_id=lib_id, is_vapp_template=is_vapp)
 
@@ -344,7 +352,7 @@ def make_vcsp(lib_name, lib_path, md5_enabled):
         json.dump(_make_items(items, lib_version), f, indent=2)
 
 
-def make_vcsp_s3(lib_name, lib_path, skip_cert, aws_default_region = None):
+def make_vcsp_s3(lib_name, lib_path, skip_cert):
     """
     lib_path is the library folder path on the bucket with pattern: [bucket-name]/[object-folder-path]
 
@@ -371,10 +379,7 @@ def make_vcsp_s3(lib_name, lib_path, skip_cert, aws_default_region = None):
     lib_folder_path = paths[1]
 
     s3 = boto3.resource("s3")
-    if aws_default_region is None:
-        s3_client = boto3.client('s3')
-    else:
-        s3_client = boto3.client('s3',region_name=aws_default_region)
+    s3_client = boto3.client('s3')
 
     # check if the given s3 bucket exists
     try:
@@ -522,6 +527,158 @@ def file_exist_on_s3(s3_client, bucket, file_path):
     response = s3_client.list_objects_v2(Bucket=bucket, Prefix=file_path)
     return response['KeyCount'] == 1 
 
+def _write_blob(blobname, blobconent):
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blobcontainer = os.getenv('AZURE_BLOB_STORE_CONTAINER')
+    my_content_settings = ContentSettings(content_type='application/json')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    blob_client = blob_service_client.get_blob_client(container=blobcontainer, blob=blobname)
+    blob_client.upload_blob(json.dumps(blobconent),overwrite=True, blob_type = "BlockBlob",content_settings=my_content_settings)
+
+def _read_blob(blobname):
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blobcontainer = os.getenv('AZURE_BLOB_STORE_CONTAINER')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    blob_client = blob_service_client.get_blob_client(container=blobcontainer, blob=blobname)
+    download_stream = blob_client.download_blob()
+    blob = download_stream.readall()
+    blob =str(blob.decode('utf-8'))
+    return blob
+
+def _get_item(json_object, name, value):
+        return [obj for obj in json_object if obj[name]==value]
+
+def _dir2item_blob(items,old_item):
+    items_json = {}
+    files_items = []
+    vcsp_type = None
+    is_vapp = "false" 
+    fname = ""
+    for item in items:
+        #item.name = urllib.parse.quote(item.name)
+        if item.name.find("/") == -1:
+            continue #skip items if they are in the root
+        fname = item.name.split("/")[-1]
+        if fname == "item.json" or fname == "lib.json":
+            continue # skip the item folder and item.json meta data file
+        if fname[-4:] == ".ovf" :
+            vcsp_type = VCSP_TYPE_OVF
+            try:
+                ovf_desc = _read_blob(item.name)
+                if "<VirtualSystemCollection" in ovf_desc:
+                    is_vapp = "true"
+            except:
+                logger.error("Failed to read ovf descriptor: %s" % item.name)
+        if fname[-4:] == ".ova" :
+            vcsp_type = VCSP_TYPE_OVF
+        if vcsp_type != VCSP_TYPE_OVF and ".iso" not in item.name:
+            vcsp_type = VCSP_TYPE_OTHER
+        if vcsp_type not in [VCSP_TYPE_OVF, VCSP_TYPE_OTHER] and ".iso" in item.name:
+            vcsp_type = VCSP_TYPE_ISO  # only if all files are iso, then it is ISO type
+    for item in items:
+        if item.name.find("/") == -1:
+            continue
+        fname = item.name.split("/")[-1]
+        if fname == "item.json" or fname == "lib.json":
+            continue # skip the item folder and item.json meta data file
+        size = item.size
+        file_json = {
+            "name": fname,
+            "size": size,
+            "etag": "%s" % int(item.etag,16),
+            "hrefs": [urllib.parse.quote(item.name,safe="/")]
+        }
+        try:
+            #TODO If duplicate file names this may not function correctly.
+            old_item_file = _get_item(old_item[0]['files'],"name",fname)
+            if (int(item.etag,16) == int(old_item_file[0]['etag'])):
+                identifier = old_item_file[0]['etag']
+            else:
+                identifier = uuid.uuid4()
+        except:
+            identifier = uuid.uuid4()
+        if vcsp_type == VCSP_TYPE_ISO:
+            extension_index = fname.rfind('.')
+            child_item_name = fname[:extension_index]
+            items_json['items'] = _make_item(item.name.split("/")[-2], vcsp_type, item.name.split("/")[-1], [file_json], identifier=identifier)
+        else:
+            files_items.append(file_json)
+        if vcsp_type != VCSP_TYPE_ISO:
+            if fname != "item.json" and fname != "lib.json":
+                if item.name.find("/") > -1:
+                    items_json['items'] = _make_item(item.name.split("/")[-2], vcsp_type, item.name.split("/")[-2], files_items, identifier=identifier, is_vapp_template=is_vapp)
+    return items_json
+
+def get_blobs():
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blobcontainer = os.getenv('AZURE_BLOB_STORE_CONTAINER')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    blob_container_client = blob_service_client.get_container_client(blobcontainer)
+    generator = blob_container_client.list_blobs()
+    folders = {}
+    for blobs in generator:
+        try:
+            for blob in blobs:
+                if (blob.name.count("/") > 1):
+                    print("Path deeper than one subfolder: {name}".format(name=blob.name))
+                    continue
+                if (str(blob.name).find("/") > 0):
+                    [folder, fname ] = str(blob.name).split("/")
+                else:
+                    folder = ""
+                if (folder in folders):
+                    folders[folder].append(blob)
+                else:
+                    folders[folder]= [blob]
+        except:
+            if (blobs.name.count("/") > 1):
+                print("Path deeper than one subfolder.  Ignored File: {name}".format(name=blobs.name))
+                continue
+            if (str(blobs.name).find("/") > 0):
+                    [folder, fname] = str(blobs.name).split("/")
+            else:
+                folder = ""
+            if (folder in folders):
+                folders[folder].append(blobs)
+            else:
+                folders[folder]= [blobs]
+    return folders
+
+def make_content_library_blob(name, id=uuid.uuid4(), creation=datetime.datetime.now(), version=1):
+    return {
+            "vcspVersion": str(VCSP_VERSION),
+            "version": str(version),
+            "contentVersion": "1",
+            "name": name,
+            "id": "urn:uuid:%s" % id,
+            "created": creation.strftime(ISO_FORMAT),
+            "capabilities": {
+            "transferIn": [ "httpGet" ],
+            "transferOut": [ "httpGet" ],
+            },
+        "itemsHref": "items.json"
+    }
+
+def make_vcsp_blob(lib_name):
+    item_collection = []
+    items = get_blobs()
+    old_items = json.loads(_read_blob("items.json"))
+    for item in items:
+        for subitems in items[item]:
+            if (subitems['name'][-4:].lower() == "json"):
+                old_item = _get_item(old_items['items'],"selfHref",urllib.parse.quote(subitems['name']))
+        return_items = _dir2item_blob(items[item],old_item)
+        #print("RETURN:")
+        #print(return_items['items'])
+        #print("OLD:")
+        #print(old_item[0])
+        if json.dumps(return_items) != '{}':
+            _write_blob(f"{item}/item.json",return_items['items'])
+            item_collection.append(return_items['items'])
+    item_collection = _make_items(item_collection)
+    _write_blob("items.json",item_collection)
+    _write_blob("lib.json", make_content_library_blob(lib_name))
+
 def parse_options():
     """
     Parse command line options
@@ -541,6 +698,8 @@ def parse_options():
                         default='true', help="skip OVF cert")
     args = parser.parse_args()
 
+    if args.type=="blob":
+        return args
     if args.name is None or args.path is None:
         parser.print_help()
         sys.exit(1)
@@ -551,7 +710,7 @@ def usage():
     '''
     The usage message for the argument parser.
     '''
-    return """Usage: python vcsp_maker.py -n <library-name> -t <storage-type:local or s3, default local> -p <library-storage-path> --etag <true or false, default true> 
+    return """Usage: python vcsp_maker.py -n <library-name> -t <storage-type:local, s3, or blob default local> -p <library-storage-path> --etag <true or false, default true> 
                                               --skip-cert <true or fale, default true>
 
     Note that s3 requires the following configurations:
@@ -562,6 +721,14 @@ def usage():
       [default]
       aws_access_key_id = <access-key-id>
       aws_secret_access_key = <secret-access-key>
+    
+    Note that blob requires the following configurations:
+    Envionrment Variables for Azure Blob connection
+    1. AZURE_STORAGE_CONNECTION_STRING
+       Connection String for the Azure Blob Store
+    2. AZURE_BLOB_STORE_CONTAINER
+       Azure Blob Store Container Name
+    
 """
 
 def main():
@@ -577,6 +744,9 @@ def main():
         make_vcsp(lib_name, lib_path, md5_enabled)
     elif "s3" == storage_type:
         make_vcsp_s3(lib_name, lib_path, skip_cert)
+    elif "blob" == storage_type:
+        make_vcsp_blob(lib_name)
+
 
 if __name__ == "__main__":
     main()

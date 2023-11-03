@@ -1,12 +1,15 @@
 # Author: William Lam
 # Blog: www.williamlam.com
-# Description: Script demonstrating vSphere MOB Automation using PowerShell
-# Reference: http://www.williamlam.com/2016/07/how-to-automate-vsphere-mob-operations-using-powershell.html
+# Description: Check vCenter Server subscription information using Lookup Service MOB via PowerShell
+# Reference: https://williamlam.com/2023/how-to-check-if-your-vcenter-server-is-using-vsphere-vsan-subscription.html
 
-$vc_server = "192.168.1.51"
-$vc_username = "administrator@vghetto.local"
+$vc_server = "vcsa.primp-industries.local"
+$vc_username = "administrator@vsphere.local"
 $vc_password = "VMware1!"
-$mob_url = "https://$vc_server/mob/?moid=VpxSettings&method=queryView"
+
+## DO NOT EDIT BEYOND HERE ##
+
+$mob_url = "https://$vc_server/ls/mob?moid=cis.license.management.SystemManagementService&method=SearchProductUtilizations"
 
 $secpasswd = ConvertTo-SecureString $vc_password -AsPlainText -Force
 $credential = New-Object System.Management.Automation.PSCredential($vc_username, $secpasswd)
@@ -58,13 +61,14 @@ if ($PSEdition -ne 'Core'){
     }
 }
 
-# Initial login to vSphere MOB using GET and store session using $vmware variable
-$results = Invoke-WebRequest -Uri $mob_url -SessionVariable vmware -Credential $credential -Method GET
+# Initial login to Lookup Service MOB using GET and store session using $vmware variable
+Write-Host -ForegroundColor Green "Logging into the Lookup Service MOB ..."
+$results = Invoke-WebRequest -Uri $mob_url -SessionVariable vmware -Credential $credential -Method GET -UseBasicParsing
 
 # Extract hidden vmware-session-nonce which must be included in future requests to prevent CSRF error
 # Credit to https://blog.netnerds.net/2013/07/use-powershell-to-keep-a-cookiejar-and-post-to-a-web-form/ for parsing vmware-session-nonce via Powershell
 if($results.StatusCode -eq 200) {
-    $null = $results -match 'name="vmware-session-nonce" type="hidden" value="?([^\s^"]+)"'
+    $null = $results.Content -match 'name="vmware-session-nonce" type="hidden" value="?([^\s^"]+)"'
     $sessionnonce = $matches[1]
 } else {
     $results
@@ -74,23 +78,23 @@ if($results.StatusCode -eq 200) {
 
 # The POST data payload must include the vmware-session-nonce varaible + URL-encoded
 $body = @"
-vmware-session-nonce=$sessionnonce&name=VirtualCenter.InstanceName
+vmware-session-nonce=${sessionnonce}&productSearchSpec=%3CproductSearchSpec+xmlns%3Axsi%3D%22http%3A%2F%2Fwww.w3.org%2F2001%2FXMLSchema-instance%22+xsi%3Atype%3D%22CisLicenseManagementProductSearchSpecByIds%22%3E%0D%0A%3CproductIds%3EVMware+VirtualCenter+Servervc.vsphere.cloud.subscription%3C%2FproductIds%3E%0D%0A%3C%2FproductSearchSpec%3E
 "@
 
 # Second request using a POST and specifying our session from initial login + body request
 $results = Invoke-WebRequest -Uri $mob_url -WebSession $vmware -Method POST -Body $body
 
-# Logout out of vSphere MOB
-$mob_logout_url = "https://$vc_server/mob/logout"
-Invoke-WebRequest -Uri $mob_logout_url -WebSession $vmware -Method GET
-
-# Clean up the results for further processing
-# Extract InnerText, split into string array & remove empty lines
-$cleanedUpResults = $results.ParsedHtml.body.innertext.split("`n").replace("`"","") | ? {$_.trim() -ne ""}
-
-# Loop through results looking for valuestring which contains the data we want
-foreach ($parsedResults in $cleanedUpResults) {
-    if($parsedResults -like "valuestring*") {
-        $parsedResults.replace("valuestring","")
+if($results.StatusCode -eq 200) {
+    if($results.Content -match "CisLicenseFaultNotFoundFault") {
+        Write-Host -ForegroundColor Yellow "This vCenter Server has NOT been converted to subscription ..."
+    } else {
+        Write-Host -ForegroundColor green "This vCenter Server has been converted to subscription ..."
     }
+} else {
+    Write-Error "Failed to query vCenter Server for subscription information ..."
 }
+
+# Logout out of Lookup Service MOB
+$mob_logout_url = "https://$vc_server/ls/mob/logout"
+Write-Host -ForegroundColor Green "Logging out of the Lookup Service MOB ..."
+$results = Invoke-WebRequest -Uri $mob_logout_url -WebSession $vmware -Method GET -SkipHttpErrorCheck
