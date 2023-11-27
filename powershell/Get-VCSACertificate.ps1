@@ -8,6 +8,8 @@ Function Get-VCSACertificate {
 #>
     param(
         [Parameter(Mandatory=$false)][ValidateSet("MACHINE","VMCA_ROOT","STS", "TRUSTED_ROOT")][string]$Type
+        ,
+        $Server
     )
 
     Function CreateCertObject {
@@ -40,13 +42,17 @@ Function Get-VCSACertificate {
         return $tmp
     }
 
+    $CisServer = @{}
+    if ($Server) {$CisServer.Server = $Server}
+
+
     $results =@()
 
     # Cert library to convert from PEM format
     $xCert2Type = [System.Security.Cryptography.X509Certificates.X509Certificate2]
 
     # Retrieve VMCA_ROOT and STS
-    $signingCertService = Get-cisservice "com.vmware.vcenter.certificate_management.vcenter.signing_certificate"
+    $signingCertService = Get-cisservice "com.vmware.vcenter.certificate_management.vcenter.signing_certificate" @CisServer
     $signingCerts = $signingCertService.get().signing_cert_chains.cert_chain
 
     foreach ($signingCert in $signingCerts) {
@@ -61,7 +67,7 @@ Function Get-VCSACertificate {
     }
 
     # Retrieve MACHINE
-    $tlsService = Get-cisservice "com.vmware.vcenter.certificate_management.vcenter.tls"
+    $tlsService = Get-cisservice "com.vmware.vcenter.certificate_management.vcenter.tls" @CisServer
     $tlsCert = $tlsService.get()
 
     $tmp = [pscustomobject] [ordered]@{
@@ -87,7 +93,7 @@ Function Get-VCSACertificate {
     $results+=$tmp
 
     # Retrieve TRUSTED_ROOT
-    $trustedRootChainService = Get-cisservice "com.vmware.vcenter.certificate_management.vcenter.trusted_root_chains"
+    $trustedRootChainService = Get-cisservice "com.vmware.vcenter.certificate_management.vcenter.trusted_root_chains" @CisServer
     $trustedRootChains = $trustedRootChainService.list().chain
     foreach ($trustedRootChain in $trustedRootChains) {
         $rootChain = $trustedRootChainService.get($trustedRootChain).cert_chain.cert_chain | Out-String
