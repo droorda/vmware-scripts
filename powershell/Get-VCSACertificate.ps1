@@ -124,7 +124,7 @@ Function Get-VCSACertificate {
     }
 
     if ($PSBoundParameters.ContainsKey("Type")){
-        $results | where {$_.Type -eq $Type}
+        $results | Where-Object {$_.Type -eq $Type}
     } else {
         $results
     }
