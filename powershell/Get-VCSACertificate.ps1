@@ -36,7 +36,7 @@ Function Get-VCSACertificate {
             IssuerStateProvince = [regex]::Match($cert.issuer, 'S=([^,]+)').Value.replace("S=","");
             IssuerCountry = [regex]::Match($cert.issuer, 'C=([^,]+)').Value.replace("C=","");
             # BigInt required to convert serial from Hex->Dec https://stackoverflow.com/a/69207938
-            IssuerSerialNumber = [decimal][bigint]::Parse($cert.SerialNumber, [System.Globalization.NumberStyles]::AllowHexSpecifier)
+            IssuerSerialNumber = [bigint]::Parse($cert.SerialNumber, [System.Globalization.NumberStyles]::AllowHexSpecifier)
             IssuerVersion = $cert.Version
         }
         return $tmp
@@ -117,7 +117,7 @@ Function Get-VCSACertificate {
             IssuerStateProvince = [regex]::Match($rootCert.issuer, 'S=([^,]+)').Value.replace("S=","");
             IssuerCountry = [regex]::Match($rootCert.issuer, 'C=([^,]+)').Value.replace("C=","");
             # BigInt required to convert serial from Hex->Dec https://stackoverflow.com/a/69207938
-            IssuerSerialNumber = [decimal][bigint]::Parse($rootCert.SerialNumber, [System.Globalization.NumberStyles]::AllowHexSpecifier)
+            IssuerSerialNumber = [bigint]::Parse($rootCert.SerialNumber, [System.Globalization.NumberStyles]::AllowHexSpecifier)
             IssuerVersion = $rootCert.Version
         }
         $results+=$tmp
